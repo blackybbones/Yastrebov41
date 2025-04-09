@@ -1,0 +1,99 @@
+﻿<Window x:Class="Yastrebov41.OrderWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:Yastrebov41"
+        mc:Ignorable="d"
+        Title="OrderWindow" Height="450" Width="800">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="30"></RowDefinition>
+            <RowDefinition Height="30"></RowDefinition>
+            <RowDefinition Height="30"></RowDefinition>
+            <RowDefinition Height="30"></RowDefinition>
+            <RowDefinition Height="*"></RowDefinition>
+            <RowDefinition Height="30"></RowDefinition>
+            <RowDefinition Height="50"></RowDefinition>
+            <RowDefinition Height="50"></RowDefinition>
+            <RowDefinition Height="40"></RowDefinition>
+        </Grid.RowDefinitions>
+
+        <!-- Определяем столбцы для всего Grid -->
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="250"></ColumnDefinition>
+            <ColumnDefinition Width="*"></ColumnDefinition>
+        </Grid.ColumnDefinitions>
+
+        <!-- Элементы в первых 4 строках -->
+        <TextBlock FontSize="16" Text="Дата формирования заказа" Grid.Row="0" Grid.Column="0" />
+        <TextBlock FontSize="16" Text="Дата доставки заказа" Grid.Row="1" Grid.Column="0" />
+        <TextBlock FontSize="16" Text="ФИО Клиента" Grid.Row="2" Grid.Column="0" />
+        <TextBlock FontSize="16" Text="Номер заказа" Grid.Row="3" Grid.Column="0" />
+        <TextBox IsReadOnly="True"  Name="InputDateOrder" Grid.Row="0" HorizontalAlignment="Center" Grid.Column="1" Width="500"/>
+        <TextBox IsReadOnly="True"  Name="InputDateDivivery" Grid.Row="1" HorizontalAlignment="Center" Grid.Column="1" Width="500"/>
+        <TextBox Name="InputName" Grid.Row="2" Grid.Column="1" Width="500"></TextBox>
+        <TextBox IsReadOnly="True" Name="InputNumberOrder" Grid.Row="3" Grid.Column="1" Width="500"></TextBox>
+
+        <ListView Grid.ColumnSpan="2" Grid.Row="4" Name="ProductListView"  >
+
+            <ListView.ItemTemplate>
+                <DataTemplate>
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="auto"></RowDefinition>
+                            <RowDefinition Height="auto"></RowDefinition>
+                            <RowDefinition Height="auto"></RowDefinition>
+                            <RowDefinition Height="auto"></RowDefinition>
+                            <RowDefinition Height="auto"></RowDefinition>
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="100"></ColumnDefinition>
+                            <ColumnDefinition Width="500"></ColumnDefinition>
+                            <ColumnDefinition Width="auto"></ColumnDefinition>
+                        </Grid.ColumnDefinitions>
+                        <Image Grid.Column="0" Grid.RowSpan="4">
+                            <Image.Source>
+                                <Binding Path="ProductPhoto" >
+                                    <Binding.TargetNullValue>
+                                        <ImageSource>
+                                            pngs/picture.png
+                                        </ImageSource>
+                                    </Binding.TargetNullValue>
+                                </Binding>
+                            </Image.Source>
+                        </Image>
+                        <TextBlock Text="{Binding ProductName}" FontSize="16" FontWeight="Black" HorizontalAlignment="Left" Grid.Row="0" Grid.Column="1"></TextBlock>
+                        <TextBlock Text="{Binding ProductDescription}" FontSize="14" HorizontalAlignment="Left" Grid.Row="1" Grid.Column="1"></TextBlock>
+                        <TextBlock Text="{Binding ProductManufacturer, StringFormat= производитель: {0}}" FontSize="14" HorizontalAlignment="Left" Grid.Row="2" Grid.Column="1"></TextBlock>
+                        <TextBlock Text="{Binding ProductCost, StringFormat=Цена: {0} руб}" FontSize="14" HorizontalAlignment="Left" Grid.Row="3" Grid.Column="1"></TextBlock>
+                        <TextBlock Text="Скидка" Grid.Row="0" Grid.Column="2" FontSize="20"></TextBlock>
+                        <WrapPanel Grid.Column="2" Grid.Row="2" Grid.RowSpan="2" HorizontalAlignment="Right">
+                            <TextBlock Text="{Binding ProductDiscountAmount}" FontSize="30" ></TextBlock>
+                            <TextBlock Text="%" FontSize="30"  ></TextBlock>
+                        </WrapPanel>
+                        <StackPanel  Grid.Column="1" Grid.Row="4" Orientation="Horizontal">
+                            <Button Content="-" Name="MinusButton" Click="MinusButton_Click" Width="30px" Height="30px"></Button>
+                            <TextBlock Text="{Binding Count}" Name="CountProduct" FontSize="18px"></TextBlock>
+                            <Button Content="+" Click="PlusButton_Click" Name="PlusButton"  Width="30px" Height="30px"></Button>
+                        </StackPanel>
+
+                    </Grid>
+                </DataTemplate>
+            </ListView.ItemTemplate>
+        </ListView>
+
+
+        <TextBlock FontSize="16" Text="Пункт выдачи" Grid.Row="5" Grid.Column="0" />
+        <ComboBox Grid.Row="5" Grid.Column="1" Name="Combotype"  FontSize="15" Width="500"  ></ComboBox>
+
+        <TextBlock FontSize="16" Text="Сумма заказа:" Grid.Row="6" Grid.Column="0" />
+        <TextBlock Text="130000 руб с учетом всех скидок" Name="SumOrder" HorizontalAlignment="Center" FontSize="16"  Grid.Row="6" Grid.Column="1" />
+
+        <TextBlock FontSize="16" Text="Срок доставки:" Grid.Row="7" Grid.Column="0" />
+        <TextBlock Text="14 дней" Name="TermDilivery" HorizontalAlignment="Center" FontSize="16"  Grid.Row="7" Grid.Column="1" />
+
+
+        <Button HorizontalAlignment="Left" Name="SaveButton"  Click="SaveButton_Click"  Grid.Row="8" Content="Сохранить" Grid.Column="1" Margin="62,5,0,5"/>
+    </Grid>
+</Window>
