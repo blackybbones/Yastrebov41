@@ -21,9 +21,9 @@ namespace Yastrebov41
     /// </summary>
     public partial class ProductPage : Page
     {
-        List<Product> CurrentPageList = new List<Product>();
         List<Product> TableList;
-
+        List<OrderProduct> selectedOrderProducts = new List<OrderProduct>();
+        List<Product> selectedProducts = new List<Product>();
         int CountPage;
         int CurrentCountPage;
         private User _user;
@@ -64,6 +64,7 @@ namespace Yastrebov41
 
             rolee.Text = role;
 
+            _user = user;
 
             ComboBoxFilter.SelectedIndex = 0;
             CurrentCountPage = TableList.Count;
@@ -133,7 +134,7 @@ namespace Yastrebov41
 
         private void ChangeText()
         {
-            CurrentPageList.Clear();
+            selectedProducts.Clear();
             CountPage = TableList.Count;
             currentPages.Text = CountPage.ToString();
         }
@@ -145,22 +146,96 @@ namespace Yastrebov41
 
         private void MenuItem_Click(object sender, RoutedEventArgs e)
         {
-            var currentChoiceProduct = ProductListView.SelectedItems.Cast<Product>().ToList();
-            for (int i = 0; i < currentChoiceProduct.Count; i++)
+
+
+            if (ProductListView.SelectedIndex >= 0)
             {
-                CurrentPageList.Add(currentChoiceProduct[i]);
+                var prod = ProductListView.SelectedItem as Product;
+
+                //int newOrderID = selectedOrderProducts.Last().Order.OrderID;
+                var newOrderProd = new OrderProduct();//новый заказ
+
+                //номер продукта в новую запись
+                newOrderProd.ProductArticleNumber = prod.ProductArticleNumber;
+                newOrderProd.ProductCount = 1;
+
+                //проверии есть ли уже такой заказ
+                var selOP = selectedOrderProducts.Where(p => Equals(p.ProductArticleNumber, prod.ProductArticleNumber));
+                //MessageBox.Show(selOP.Count().ToString());
+                if (selOP.Count() == 0)
+                {
+                    //MessageBox.Show(newOrderProd. OrderID.ToString() + " " + newOrderProd.ProductArticleNumber.ToString() + " " + newOrderProd.Quantity.ToString());
+                    selectedOrderProducts.Add(newOrderProd);
+                    selectedProducts.Add(prod);
+                    //MessageBox.Shom("колво в selecteOP = " + selectedOrderProducts.Count().ToString());
+                }
+                else
+                {
+                    foreach (OrderProduct p in selectedOrderProducts)
+                    {
+                        if (p.ProductArticleNumber == prod.ProductArticleNumber)
+                            p.ProductCount++;
+                        //MessageBox.Show("колво = " + p.Quantity.ToString());
+                    }
+                }
+
+                OrderBtn.Visibility = Visibility.Visible;
+                ProductListView.SelectedIndex = -1;
             }
-            BasketButton.Visibility = Visibility.Visible;
 
         }
 
-        private void BasketButton_Click(object sender, RoutedEventArgs e)
+        private void BtnOrder_Click(object sender, RoutedEventArgs e)
         {
-            OrderWindow orderWindow = new OrderWindow(_user, CurrentPageList);
+            selectedProducts = selectedProducts.Distinct().ToList();
 
-            orderWindow.Show();
-            CurrentPageList = new List<Product>();
-            BasketButton.Visibility = Visibility.Hidden;
+            // Добавьте этот код для инициализации Quantity в Product
+            foreach (var product in selectedProducts)
+            {
+                // Находим соответствующий OrderProduct для текущего Product
+                var orderProduct = selectedOrderProducts.FirstOrDefault(op =>
+                    op.ProductArticleNumber == product.ProductArticleNumber);
+
+                if (orderProduct != null)
+                {
+                    // Устанавливаем Quantity в Product на основе ProductCount из OrderProduct
+                    product.Quantity = orderProduct.ProductCount;
+                }
+                else
+                {
+                    // Если OrderProduct не найден (хотя это маловероятно), устанавливаем значение по умолчанию
+                    product.Quantity = 1;
+                }
+            }
+
+            OrderWindow orderWindow = new OrderWindow(selectedOrderProducts, selectedProducts, _user);
+            bool? result = orderWindow.ShowDialog();
+
+            // Если заказ успешно сохранен (DialogResult = true)
+            if (result == true)
+            {
+                selectedProducts.Clear();
+                selectedOrderProducts.Clear();
+                ProductListView.Items.Refresh(); // Обновить отображение списка
+            }
+
+            // Обновить видимость кнопки
+            OrderBtn.Visibility = selectedProducts.Any() ? Visibility.Visible : Visibility.Hidden;
+
+            //orderWindow.ShowDialog();
+
+            // После закрытия окна:
+            if (selectedProducts.Count == 0)
+            {
+                OrderBtn.Visibility = Visibility.Hidden;
+            }
+            else
+            {
+                OrderBtn.Visibility = Visibility.Visible;
+            }
         }
+
+
     }
 }
+

@@ -19,185 +19,241 @@ namespace Yastrebov41
     /// </summary>
     public partial class OrderWindow : Window
     {
-        private List<Product> choiceProducts = null;
-        private User Client = null;
-        private int countDay = 0;
-        public OrderWindow(User user, List<Product> selectedProduct)
+        List<OrderProduct> selectedOrderProducts = new List<OrderProduct>();
+        List<Product> selectedProducts = new List<Product>();
+        private Order currentOrder = new Order();
+        private OrderProduct currentOrderProduct = new OrderProduct();
+        private User _currentUser;
+
+        public OrderWindow(List<OrderProduct> selectedOrderProducts, List<Product> selectedProducts, User user)
         {
             InitializeComponent();
-            if (user == null)
-            {
-
-            }
+            _currentUser = user;
+            if (user != null)
+                ClientTB.Text = user.UserSurname + " " + user.UserName + " " + user.UserPatronymic;
             else
+                ClientTB.Text = "Гость";
+
+            var currentPickups = Yastrebov41Entities.GetContext().PickUpPoint.ToList().Select(p => p.PickUpPointFull).ToList();
+            PickPointComboBox.ItemsSource = currentPickups;
+
+            int currentID = selectedOrderProducts.First().OrderID; //определение номера текущего заказа
+            currentOrder.OrderID = currentID;
+            TBOrderID.Text = currentID.ToString();
+
+            int nextOrderID = GetNextOrderID();
+            TBOrderID.Text = nextOrderID.ToString();
+
+
+            foreach (Product product in selectedProducts)
             {
-                InputName.Text = user.UserSurname + " " + user.UserName + " " + user.UserPatronymic;
-                InputName.IsReadOnly = true;
-                Client = user;
-
-            }
-            choiceProducts = selectedProduct;
-            var orders = Yastrebov41Entities.GetContext().Order.ToList();
-            InputNumberOrder.Text = (orders.Count + 1).ToString();
-            InputDateOrder.Text = DateTime.Now.ToShortDateString();
-            List<PickUpPoint> pickPup = Yastrebov41Entities.GetContext().PickUpPoint.ToList();
-            List<string> listPickUp = new List<string>();
-            foreach (var item in pickPup)
-            {
-                listPickUp.Add(item.PickUpPointIndex + " " + item.PickUpPointCity + " " + item.PickUpPointStreet + " " + item.PickUpPointHome);
-            }
-
-
-
-            Combotype.ItemsSource = listPickUp;
-
-            duplicateSort();
-            ProductListView.ItemsSource = choiceProducts;
-            UpdateContent();
-        }
-
-
-        private void UpdateContent()
-        {
-            double generalSum = 0;
-            var articles = Yastrebov41Entities.GetContext().OrderProduct.ToList();
-            bool isTerm = false;
-            if (choiceProducts != null)
-            {
-                foreach (var item in choiceProducts)
+                var orderProduct = selectedOrderProducts.FirstOrDefault(op => op.ProductArticleNumber == product.ProductArticleNumber);
+                if (orderProduct != null)
                 {
-
-                    double discount = (double)item.ProductDiscountAmount / 100;
-                    double itogsum = Convert.ToInt32(item.ProductCost) - ((double)item.ProductCost * discount);
-                    generalSum += itogsum * item.Count;
-                    if (item.Count > item.ProductQuantityInStock - 3)
-                       isTerm = true;
-
+                    product.Quantity = orderProduct.ProductCount;
+                }
+                else
+                {
+                    product.Quantity = 1; // Если не найден, устанавливаем 1 (опционально)
                 }
             }
 
-            SumOrder.Text = generalSum.ToString() + " с учетом всех скидок";
-            if (choiceProducts != null)
-                TermDilivery.Text = isTerm ? "6" : choiceProducts.Count == 0 ? "Выберете товар" : "3";
-            else
-                TermDilivery.Text = "Выберете товар";
-            if (TermDilivery.Text.Length == 1)
-                countDay = Convert.ToInt32(TermDilivery.Text);
-            else
-                countDay = 0;
-            InputDateDivivery.Text = DateTime.Now.AddDays(countDay).ToShortDateString();
+            ProductListView.ItemsSource = selectedProducts;
+
+            this.selectedOrderProducts = selectedOrderProducts;
+            this.selectedProducts = selectedProducts;
+            OrderDP.Text = DateTime.Now.ToString();
+            SetDeliveryDate();
+            CalculateTotalAndDiscount();
         }
 
-        private void SaveButton_Click(object sender, RoutedEventArgs e)
+        private void BtnPlus_Click(object sender, RoutedEventArgs e)
         {
-            string errors = "";
-            if (choiceProducts.Count == 0)
-                errors += "Выберете хотя бы один товар!\n";
-            if (InputName.Text == "")
-                errors += "Введите свое ФИО\n";
-            if (Combotype.SelectedIndex == -1)
-                errors += "Выберете пункт выдачи\n";
-            if (errors.Length > 0)
+            var prod = (sender as Button).DataContext as Product;
+            var selectedOP = selectedOrderProducts.FirstOrDefault(p => p.ProductArticleNumber == prod.ProductArticleNumber);
+
+            if (selectedOP != null)
             {
-                MessageBox.Show(errors);
-                return;
+                selectedOP.ProductCount++;
+                prod.Quantity = selectedOP.ProductCount;
+                SetDeliveryDate();
+                CalculateTotalAndDiscount();
+                ProductListView.Items.Refresh();
             }
-            var orders = Yastrebov41Entities.GetContext().Order.ToList();
-
-            Order newOrder = new Order();
-            newOrder.OrderID = Convert.ToInt32(InputNumberOrder.Text);
-            newOrder.OrderStatus = "Новый";
-            newOrder.OrderDate = DateTime.Now;
-            newOrder.OrderPickupPoint = Combotype.SelectedIndex + 1;
-            newOrder.OrderCode = 911 + orders.Count;
-            if (Client != null)
-                newOrder.OrderClient = Client.UserID;
-            newOrder.OrderDeliveryDate = DateTime.Now.AddDays(countDay);
-            newOrder.User = null;
-
-
-            List<OrderProduct> orderProductList = new List<OrderProduct>();
-            foreach (Product item in ProductListView.ItemsSource)
-            {
-                OrderProduct orderProduct = new OrderProduct();
-                orderProduct.OrderID = newOrder.OrderID;
-                orderProduct.ProductCount = item.Count;
-                orderProduct.ProductArticleNumber = item.ProductArticleNumber;
-                orderProductList.Add(orderProduct);
-            }
-
-            foreach (var item in orderProductList)
-            {
-                Yastrebov41Entities.GetContext().OrderProduct.Add(item);
-            }
-
-            Yastrebov41Entities.GetContext().Order.Add(newOrder);
-            Yastrebov41Entities.GetContext().SaveChanges();
-            choiceProducts = null;
-            UpdateContent();
-            ProductListView.ItemsSource = null;
-            MessageBox.Show("Заказ оформлен успешно, ваш код: " + newOrder.OrderCode);
-            this.Close();
-            return;
-
-
-
         }
 
-        private void MinusButton_Click(object sender, RoutedEventArgs e)
+        private void BtnMinus_Click(object sender, RoutedEventArgs e) //удаление есои накликал ноль, невозм кликать в минус
         {
-            var button = sender as Button;
-            var product = button.DataContext as Product;
-            if (product.Count > 1)
+            var prod = (sender as Button).DataContext as Product;
+            var selectedOP = selectedOrderProducts.FirstOrDefault(p => p.ProductArticleNumber == prod.ProductArticleNumber);
+
+            if (selectedOP != null)
             {
-                product.Count--;
-                ProductListView.ItemsSource = null;
-                ProductListView.ItemsSource = choiceProducts;
-            }
-            else
-            {
-                choiceProducts.Remove(product);
-                ProductListView.ItemsSource = null;
-                ProductListView.ItemsSource = choiceProducts;
-            }
-            UpdateContent();
-        }
-
-        private void PlusButton_Click(object sender, RoutedEventArgs e)
-        {
-            var button = sender as Button;
-            var product = button.DataContext as Product;
-            product.Count++;
-            ProductListView.ItemsSource = null;
-            ProductListView.ItemsSource = choiceProducts;
-            UpdateContent();
-        }
-
-
-        private void duplicateSort()
-        {
-
-
-            for (int i = 0; i < choiceProducts.Count; i++)
-            {
-                for (int j = 0; j < choiceProducts.Count; j++)
+                if (selectedOP.ProductCount > 1)
                 {
-                    if (i != j && choiceProducts[i].ProductArticleNumber == choiceProducts[j].ProductArticleNumber)
-                    {
-                        try
-                        {
-                            choiceProducts.Remove(choiceProducts[j]);
-                            choiceProducts[i].Count += 2;
-                        }
-                        catch (Exception ex)
-                        {
-                            return;
-                        }
+                    selectedOP.ProductCount--;
+                    prod.Quantity = selectedOP.ProductCount; // Синхронизируем Quantity
+                    SetDeliveryDate();
+                    CalculateTotalAndDiscount();
+                    ProductListView.Items.Refresh();
+                }
+                else
+                {
+                    // Удаляем OrderProduct из списка
+                    selectedOrderProducts.Remove(selectedOP);
 
+                    // Находим Product в selectedProducts по артикулу (чтобы избежать проблем с ссылками)
+                    var productToRemove = selectedProducts.FirstOrDefault(p => p.ProductArticleNumber == prod.ProductArticleNumber);
+                    if (productToRemove != null)
+                    {
+                        selectedProducts.Remove(productToRemove);
+                    }
+
+                    // Обновляем интерфейс
+                    ProductListView.Items.Refresh();
+                    // Перепривязываем данные, чтобы обновить интерфейс
+                    ProductListView.ItemsSource = null;
+                    ProductListView.ItemsSource = selectedProducts;
+                    SetDeliveryDate();
+                    CalculateTotalAndDiscount();
+                    ProductListView.Items.Refresh();
+
+                    if (selectedProducts.Count == 0)
+                    {
+                        Manager.OrderBtn.Visibility = Visibility.Hidden;
+                        this.Close();
                     }
                 }
             }
 
+            //MessageBox.Show(prod.ProductArticleNumber.ToString() + " " + prod.Quantity);
+        }
+
+        //private void DateFormOrder_SelectedDateChanged(object sender, SelectionChangedEventArgs e)
+        //{
+        //    SetDeliveryDate();
+        //}
+
+        private int GenerateUniqueOrderCode()
+        {
+            var context = Yastrebov41Entities.GetContext();
+            Random random = new Random();
+            int code;
+            do
+            {
+                code = random.Next(100, 1000);
+            } while (context.Order.Any(o => o.OrderCode == code));
+
+            return code;
+        }
+
+        private int GetNextOrderID()
+        {
+            var sqlCommand = "SELECT IDENT_CURRENT('Order')";
+            var nextID = Yastrebov41Entities.GetContext().Database.SqlQuery<decimal>(sqlCommand).FirstOrDefault() + 1;
+            return (int)nextID;
+        }
+
+        private void SetDeliveryDate()
+        {
+            // Проверяем, достаточно ли товара на складе: (количество в заказе + 3) <= количество на складе?
+            // Если на складе меньше, чем (количество в заказе + 3), то срок 6 дней.
+
+            bool DeliveryStatus = false;
+            foreach (var p in selectedProducts)
+            {
+                if (p.ProductQuantityInStock < (p.Quantity + 3))
+                {
+                    DeliveryStatus = true;
+                }
+            }
+
+            DateTime deliveryDate = OrderDP.SelectedDate.Value;
+            deliveryDate = DeliveryStatus
+                ? deliveryDate.AddDays(6) // Если есть товары <3 шт. → +6 дней
+                : deliveryDate.AddDays(3); // В противном случае → +3 дня
+            OrderDD.SelectedDate = deliveryDate;
+
+        }
+
+
+        private void CalculateTotalAndDiscount()
+        {
+            decimal total = 0;
+            decimal discount = 0;
+
+            foreach (var orderProduct in selectedOrderProducts)
+            {
+                var product = selectedProducts.FirstOrDefault(p => p.ProductArticleNumber == orderProduct.ProductArticleNumber);
+                if (product == null) continue;
+
+                decimal price = product.ProductCost;
+                decimal discountPercent = product.ProductDiscountAmount ?? 0;
+
+                // Сумма без скидки
+                total += orderProduct.ProductCount * price;
+
+                // Сумма скидки для текущего товара
+                discount += orderProduct.ProductCount * price * (discountPercent / 100);
+            }
+
+            // Итоговая сумма с учётом скидки
+            decimal discountedTotal = total - discount;
+
+            // Обновление отображения
+            TotalAmountTB.Text = total.ToString("N0") + " ₽ ";
+            TotalDiscountAmountTB.Text = discount.ToString("N0") + " ₽ ";
+            DiscountAmountTB.Text = discountedTotal.ToString("N0") + " ₽";
+        }
+
+        private void SaveBtn_Click(object sender, RoutedEventArgs e)
+        {
+            StringBuilder errors = new StringBuilder();
+            if (PickPointComboBox.SelectedIndex == -1)
+                errors.AppendLine("Выберите пункт выдачи!");
+            if (OrderDP.SelectedDate.Value == null)
+                errors.AppendLine("Введите дату формирования заказа!");
+            if (OrderDD.SelectedDate.Value == null)
+                errors.AppendLine("Введите дату доставки заказа!");
+            if (selectedOrderProducts.Count == 0) // Новая проверка
+                errors.AppendLine("Добавьте хотя бы один товар в заказ!");
+            if (errors.Length > 0)
+            {
+                MessageBox.Show(errors.ToString());
+                return;
+            }
+            if (_currentUser == null)
+            {
+                currentOrder.OrderClient = null;
+            }
+            else
+            {
+                currentOrder.OrderClient = _currentUser.UserID;
+            }
+
+            currentOrder.OrderPickupPoint = PickPointComboBox.SelectedIndex + 1;
+            currentOrder.OrderDate = OrderDP.SelectedDate.Value;
+            currentOrder.OrderDeliveryDate = OrderDD.SelectedDate.Value;
+            currentOrder.OrderStatus = "Новый";
+
+            currentOrder.OrderCode = GenerateUniqueOrderCode();
+
+            Yastrebov41Entities.GetContext().Order.Add(currentOrder);
+
+            Yastrebov41Entities.GetContext().SaveChanges();
+            TBOrderID.Text = currentOrder.OrderID.ToString();
+
+            foreach (var op in selectedOrderProducts)
+            {
+                op.OrderID = currentOrder.OrderID;
+                Yastrebov41Entities.GetContext().OrderProduct.Add(op);
+            }
+            Yastrebov41Entities.GetContext().SaveChanges();
+            MessageBox.Show($"Заказ №{currentOrder.OrderID} сохранен! Код: {currentOrder.OrderCode}");
+            this.DialogResult = true;
+
+            
+            Close();
         }
     }
 }

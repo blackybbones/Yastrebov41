@@ -48,7 +48,7 @@
                     <TextBlock> 15 % и более</TextBlock>
                 </ComboBox>
             </StackPanel>
-            <Button Visibility="Hidden" Name="BasketButton"  Click="BasketButton_Click" Content="Корзина"></Button>
+            <Button Visibility="Hidden" Name="OrderBtn"  Click="BtnOrder_Click" Content="Корзина"></Button>
         </StackPanel>
         <ListView Name="ProductListView" Grid.Row="1" Margin="0,40,0,0" Grid.RowSpan="2" >
             <ListView.ContextMenu>
